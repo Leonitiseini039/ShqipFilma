@@ -467,6 +467,13 @@
       border: 1px solid #444;
       margin-top: 8px;
     }
+    .upload-status {
+      display: block;
+      min-height: 18px;
+      margin-top: 6px;
+      color: #9ccc65;
+      font-size: 12px;
+    }
     .admin-list {
       max-height: 220px;
       overflow-y: auto;
@@ -856,6 +863,7 @@
               <small>Or upload an image from your computer. It will be stored in this browser.</small>
               <input type="file" id="contentImageFile" accept="image/jpeg,image/png,image/webp,image/gif" onchange="previewPoster(event)">
               <img id="posterPreview" class="poster-preview" alt="Poster preview">
+              <small id="posterUploadStatus" class="upload-status" aria-live="polite"></small>
             </div>
             <div class="form-group">
               <label>Release year</label>
@@ -1088,8 +1096,11 @@
           const preview = document.getElementById("posterPreview");
           preview.src = dataUrl;
           preview.style.display = "block";
+          document.getElementById("contentImage").value = "";
+          document.getElementById("posterUploadStatus").textContent = "Image ready to be stored locally.";
         }).catch(error => {
           event.target.value = "";
+          document.getElementById("posterUploadStatus").textContent = "";
           alert(error.message);
         });
     }
@@ -1463,6 +1474,9 @@
         existingPreview.style.display = "none";
       }
       document.getElementById("contentImageFile").value = "";
+      document.getElementById("posterUploadStatus").textContent = item.image && item.image.startsWith("data:image/")
+        ? "Stored locally in this browser."
+        : "";
       document.getElementById("contentYear").value = item.year || "";
       document.getElementById("contentGenre").value = item.genre || "";
       document.getElementById("contentRuntime").value = item.runtime || "";
@@ -1483,6 +1497,7 @@
       document.getElementById("contentForm").reset();
       document.getElementById("posterPreview").removeAttribute("src");
       document.getElementById("posterPreview").style.display = "none";
+      document.getElementById("posterUploadStatus").textContent = "";
       document.getElementById("contentFormHeading").innerText = "Publish new content";
       document.getElementById("contentSubmitButton").innerText = "Publish content";
       document.getElementById("cancelEditButton").style.display = "none";
@@ -1602,6 +1617,7 @@
       resetContentForm();
       closeModal("adminModal");
       renderContent();
+      showToast("Content and poster saved locally.");
     }
 
     function closeModal(id) {
