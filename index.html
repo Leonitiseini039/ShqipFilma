@@ -966,7 +966,7 @@
       for (let i = 1; i <= 10; i++) {
         container.innerHTML += `
           <div class="form-group" style="margin-bottom: 5px;">
-            <input type="url" class="server-input" placeholder="URL e Embed të Serverit ${i}" ${i===1?'required':''}>
+            <textarea class="server-input" rows="2" placeholder="URL ose kod embed të Serverit ${i}"></textarea>
           </div>
         `;
       }
@@ -1050,6 +1050,23 @@
       try {
         const url = new URL(String(value), window.location.href);
         return allowedProtocols.includes(url.protocol) ? url.href : "";
+      } catch {
+        return "";
+      }
+    }
+
+    function getEmbedUrl(value) {
+      const input = String(value || "").trim();
+      if (!input) return "";
+
+      const directUrl = /^https?:\/\//i.test(input) ? safeUrl(input) : "";
+      if (directUrl) return directUrl;
+
+      try {
+        const embedDocument = new DOMParser().parseFromString(input, "text/html");
+        const embedElement = embedDocument.querySelector("iframe[src], embed[src], video[src]");
+        const embedSource = embedElement ? embedElement.getAttribute("src") : "";
+        return /^https?:\/\//i.test(embedSource || "") ? safeUrl(embedSource) : "";
       } catch {
         return "";
       }
@@ -1301,8 +1318,9 @@
         tvControls.style.display = "none";
       }
 
-      activeMedia.servers = Array.isArray(activeMedia.servers) ? activeMedia.servers : [];
-      activeServer = activeMedia.servers.findIndex(url => safeUrl(url));
+      activeMedia.servers = (Array.isArray(activeMedia.servers) ? activeMedia.servers : [])
+        .map(getEmbedUrl);
+      activeServer = activeMedia.servers.findIndex(url => getEmbedUrl(url));
       if (activeServer < 0) activeServer = 0;
       renderServers();
       loadEmbed();
@@ -1345,7 +1363,7 @@
       const container = document.getElementById("server-buttons");
       container.innerHTML = "";
       (activeMedia.servers || []).forEach((url, idx) => {
-        if (safeUrl(url)) {
+        if (getEmbedUrl(url)) {
           container.innerHTML += `
             <button class="server-btn ${idx === activeServer ? 'active' : ''}" onclick="selectServer(${idx})">
               Serveri ${idx + 1}
@@ -1356,7 +1374,7 @@
     }
 
     function selectServer(idx) {
-      if (!activeMedia || !safeUrl(activeMedia.servers[idx])) return;
+      if (!activeMedia || !getEmbedUrl(activeMedia.servers[idx])) return;
       activeServer = idx;
       renderServers();
       loadEmbed();
@@ -1365,7 +1383,7 @@
     function loadEmbed() {
       const iframe = document.getElementById("video-embed");
       if (!activeMedia) return;
-      let url = safeUrl(activeMedia.servers[activeServer]);
+      let url = getEmbedUrl(activeMedia.servers[activeServer]);
       if (!url) {
         iframe.removeAttribute("src");
         return;
@@ -1565,7 +1583,7 @@
       if (!currentUser || !currentUser.isAdmin) return;
 
       const serverInputs = document.querySelectorAll(".server-input");
-      const servers = Array.from(serverInputs).map(input => input.value.trim());
+      const servers = Array.from(serverInputs).map(input => getEmbedUrl(input.value));
 
       const title = document.getElementById("contentTitle").value.trim();
       const imageUrl = safeUrl(document.getElementById("contentImage").value.trim());
@@ -1582,7 +1600,7 @@
         const existingItem = readContent().find(item => item.id === editingContentId);
         image = existingItem ? safeImageUrl(existingItem.image) : "";
       }
-      const validServers = servers.filter(server => safeUrl(server));
+      const validServers = servers.filter(Boolean);
       if (!title || !image || validServers.length === 0) {
         alert("Add a poster URL or upload an image, plus at least one valid streaming server.");
         return;
